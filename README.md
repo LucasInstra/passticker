@@ -1,77 +1,79 @@
 # Passticker
 
-Envio local de figurinhas animadas para o WhatsApp, com som, direto do PC. Uso pessoal, uma sessão por vez.
+**English** | [Português](README.pt-BR.md)
 
-O painel converte qualquer mídia para o padrão do WhatsApp (512x512, WebP animado, até 500 KB, 10 s) e envia como figurinha de verdade. O som viaja dentro da própria `StickerMessage`, no campo 26 (`audioMessage`).
+Local WhatsApp animated sticker sender with sound, straight from your PC. Personal use, one session at a time.
 
-## Requisitos
+The panel converts any media to WhatsApp's sticker format (512x512, animated WebP, up to 500 KB, 10 s) and sends it as a real sticker. Sound travels inside the `StickerMessage` itself, in field 26 (`audioMessage`).
 
-- Node.js 20 ou superior
-- Windows para os atalhos de duplo clique (o app roda em qualquer sistema)
-- `ffmpeg` e `ffprobe` já vêm como dependências (`ffmpeg-static`, `ffprobe-static`)
+## Requirements
 
-## Instalação
+- Node.js 20 or newer
+- Windows for the double-click scripts (the app runs on any OS)
+- `ffmpeg` and `ffprobe` ship as dependencies (`ffmpeg-static`, `ffprobe-static`)
+
+## Install
 
 ```bash
 npm install
 npm start
 ```
 
-Abra `http://localhost:8000`.
+Open `http://localhost:8000`.
 
-Sem terminal, no Windows:
+Without a terminal, on Windows:
 
-- `scripts/iniciar.bat`: instala na primeira vez, abre o painel e sobe o servidor
-- `scripts/parar.bat`: encerra o processo da porta 8000
-- `scripts/adicionar-a-inicializacao.bat`: inicia junto com o Windows, sem janela
+- `scripts/iniciar.bat`: installs on first run, opens the panel and starts the server
+- `scripts/parar.bat`: stops the process listening on port 8000
+- `scripts/adicionar-a-inicializacao.bat`: starts with Windows, without a window
 
-## Pareamento
+## Pairing
 
-1. No painel, informe o número com DDI + DDD, só dígitos.
-2. Clique em Gerar código.
-3. No celular: WhatsApp > Aparelhos conectados > Conectar aparelho > Conectar com número de telefone > digite o código.
-4. A sessão fica em `auth/` e reconecta sozinha nas próximas vezes.
+1. In the panel, enter your number with country and area codes, digits only.
+2. Click Generate code.
+3. On your phone: WhatsApp > Linked devices > Link a device > Link with phone number instead, then enter the code.
+4. The session is saved in `auth/` and reconnects automatically next time.
 
-O código só é pedido depois que o socket está pronto. Pedir antes faz o WhatsApp encerrar a conexão com 401.
+The pairing code is only requested after the socket is ready. Requesting it earlier makes WhatsApp close the connection with 401.
 
-## Figurinha com som
+## Sound stickers
 
-Na seção Criar, o campo **Som** tem três opções:
+In the Create section, the **Sound** field has three options:
 
-- **Sem som**: comportamento padrão.
-- **Áudio do vídeo**: usa o áudio do próprio vídeo; imagem e som ficam nos primeiros 10 s.
-- **Áudio separado**: anexa mp3, m4a, aac, wav, ogg, opus ou flac a qualquer figurinha.
+- **No sound**: default behavior.
+- **Video audio**: uses the audio from the video itself; image and sound cover the first 10 s.
+- **Separate audio**: attaches mp3, m4a, aac, wav, ogg, opus or flac to any sticker.
 
-O áudio é convertido para OGG/Opus mono, 48 kHz, cerca de 48 kbps, com no máximo 10 s. Ele é salvo como sidecar `figurinhas/<nome>.ogg`, então reenviar pela galeria mantém o som. Excluir a figurinha apaga os dois arquivos.
+Audio is converted to OGG/Opus mono, 48 kHz, around 48 kbps, capped at 10 s. It is saved as a sidecar `figurinhas/<name>.ogg`, so sending the sticker again from the gallery keeps the sound. Deleting the sticker removes both files.
 
-O proto do Baileys não conhece o campo 26, então `sound-sticker.js` injeta o `audioMessage` no encoder em runtime, sem alterar `node_modules`. Quem estiver em uma versão do WhatsApp sem o recurso vê a figurinha normal, sem som.
+Baileys' proto does not know field 26, so `sound-sticker.js` injects `audioMessage` into the encoder at runtime, without touching `node_modules`. Recipients on a WhatsApp version without the feature see a normal sticker, without sound.
 
-## Linha de comando
+## Command line
 
 ```bash
-node send.js figurinhas/arquivo.webp 5511999999999
-node send.js figurinhas/arquivo.webp 5511999999999 --code
+node send.js figurinhas/file.webp 5511999999999
+node send.js figurinhas/file.webp 5511999999999 --code
 ```
 
-`--code` força o pareamento por código em vez de usar a sessão salva.
+`--code` forces pairing with a code instead of using the saved session.
 
-## Estrutura
+## Project layout
 
 ```
-server.js          HTTP, sessão do WhatsApp, upload, conversão e envio
-sound-sticker.js   patch do proto e montagem da figurinha com som
-send.js            envio por linha de comando
-painel.html        interface local
-assets/            fontes Faustina e Geist (OFL)
-scripts/           atalhos do Windows
-auth/              sessão do WhatsApp (não versionada)
-figurinhas/        saída em WebP e sidecars OGG (não versionada)
-atividade.log      diagnóstico (não versionado)
+server.js          HTTP, WhatsApp session, upload, conversion and sending
+sound-sticker.js   proto patch and sound sticker message builder
+send.js            command-line sender
+painel.html        local interface
+assets/            Faustina and Geist fonts (OFL)
+scripts/           Windows shortcuts
+auth/              WhatsApp session (not versioned)
+figurinhas/        WebP output and OGG sidecars (not versioned)
+atividade.log      diagnostics (not versioned)
 ```
 
-## Segurança e limites
+## Security and limits
 
-- `auth/` contém as credenciais da sessão. Nunca versione, compartilhe ou copie essa pasta.
-- O WhatsApp encerra dispositivos inativos. Se o painel mostrar 401, gere um código novo.
-- Uso pessoal. O projeto não é afiliado ao WhatsApp ou à Meta.
-- Áudio de 10 s pode sair com cerca de 10,006 s no container. Se algum cliente recusar, use 9,98 em `MAX_AUDIO`.
+- `auth/` holds the session credentials. Never version, share or copy that folder.
+- WhatsApp logs out inactive linked devices. If the panel shows 401, generate a new code.
+- Personal use only. This project is not affiliated with WhatsApp or Meta.
+- A 10 s audio may end up around 10.006 s in the container. If a client rejects it, use 9.98 in `MAX_AUDIO`.
