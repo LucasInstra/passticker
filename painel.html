@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Passticker — figurinhas animadas</title>
+<meta name="description" content="Crie e envie figurinhas animadas para o WhatsApp direto do PC. Uso pessoal.">
+<meta name="theme-color" content="#0F0E0D">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%230F0E0D%22/%3E%3Cpath d=%22M17 5 8 18h6l-1 9 9-13h-6l1-9z%22 fill=%22%23FAFAF9%22/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:Faustina;font-style:normal;font-weight:400 600;font-display:swap;src:url(assets/faustina-400.woff2) format("woff2")}
+@font-face{font-family:Faustina;font-style:normal;font-weight:500;font-display:swap;src:url(assets/faustina-500.woff2) format("woff2")}
+@font-face{font-family:Faustina;font-style:normal;font-weight:600;font-display:swap;src:url(assets/faustina-600.woff2) format("woff2")}
+@font-face{font-family:Geist;font-style:normal;font-weight:400 600;font-display:swap;src:url(assets/geist-400.woff2) format("woff2")}
+@font-face{font-family:Geist;font-style:normal;font-weight:500;font-display:swap;src:url(assets/geist-500.woff2) format("woff2")}
+@font-face{font-family:Geist;font-style:normal;font-weight:600;font-display:swap;src:url(assets/geist-600.woff2) format("woff2")}
+:root{
+  color-scheme:dark;
+  --bg:#0F0E0D;--panel:#151412;--panel-2:#1B1A17;--panel-3:#22201D;
+  --glass:rgba(21,20,18,.84);
+  --line:rgba(250,250,249,.08);--line-2:rgba(250,250,249,.16);
+  --fg:#FAFAF9;--fg-2:#D6D4CF;--fg-3:#A6A39C;--fg-4:#85827C;
+  --good:#7BD88F;--bad:#ef697a;
+  --serif:"Faustina",Georgia,"Times New Roman",serif;
+  --sans:"Geist","Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --r:18px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:400 14px/1.5 var(--sans);-webkit-font-smoothing:antialiased;min-height:100%}
+::selection{background:#fafaf933}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+button{font:inherit;color:inherit;touch-action:manipulation}
+.tn{font-variant-numeric:tabular-nums}
+.top{position:sticky;top:0;z-index:10;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.top-in{max-width:960px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:14px}
+.brand{font:500 17px/1.2 var(--serif);letter-spacing:.01em}
+.brand small{display:block;font:500 11px/1.4 var(--sans);color:var(--fg-4);letter-spacing:.14em;text-transform:uppercase}
+.status{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fg-3);border:1px solid var(--line);border-radius:999px;padding:7px 13px;background:var(--panel);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bad);flex:none;transition:background .3s}
+.dot.on{background:var(--good);box-shadow:0 0 10px #7bd88f66}
+.iconbtn{border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 12px;font-size:12.5px;color:var(--fg-3);cursor:pointer;transition:border-color .12s,color .12s;white-space:nowrap}
+.iconbtn:hover{border-color:var(--line-2);color:var(--fg)}
+.wrap{max-width:960px;margin:0 auto;padding:34px 20px 70px;display:grid;gap:14px}
+.hero{padding:26px 6px 10px;animation:rise .7s var(--ease-out) both}
+.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--fg-4);margin-bottom:12px}
+.hero h1{font:400 clamp(34px,5.4vw,54px)/1.04 var(--serif);letter-spacing:-.01em}
+.hero h1 em{font-style:italic;color:var(--fg-2)}
+.hero p{margin-top:12px;color:var(--fg-3);font-size:14.5px;max-width:56ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px;animation:rise .7s var(--ease-out) both}
+.card:nth-child(3){animation-delay:.06s}.card:nth-child(4){animation-delay:.12s}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.card,.hero{animation:none}}
+.step{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+.step i{font:italic 400 15px var(--serif);color:var(--fg-4)}
+.step h2{font:500 21px/1.2 var(--serif);letter-spacing:.005em}
+.step p{color:var(--fg-4);font-size:12.5px}
+label.lbl{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-4);margin:14px 0 7px}
+input[type=text],select{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);font:inherit;transition:border-color .12s}
+input[type=text]:focus,select:focus{border-color:var(--line-2);outline:none}
+input[type=file]{width:100%;font-size:13px;color:var(--fg-3)}
+input[type=file]::file-selector-button{font:inherit;background:var(--panel-3);color:var(--fg);border:1px solid var(--line-2);border-radius:10px;padding:9px 14px;margin-right:10px;cursor:pointer}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.row>div{flex:1;min-width:170px}
+.row>.shrink{flex:0}
+.btn{background:var(--fg);border:1px solid var(--fg);color:#0F0E0D;font-weight:600;padding:11px 20px;border-radius:999px;cursor:pointer;font-size:14px;transition:transform .12s var(--ease-out),opacity .12s;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;cursor:wait;transform:none}
+.btn.ghost{background:transparent;border-color:var(--line-2);color:var(--fg-2)}
+.btn.ghost:hover{border-color:var(--fg-4);color:var(--fg)}
+.hint{font-size:13px;color:var(--fg-4);line-height:1.55;margin-top:12px}
+.hint b{color:var(--fg-3);font-weight:500}
+.meta{font-size:12.5px;color:var(--fg-4);margin-top:8px}
+.code{font-size:32px;font-weight:600;letter-spacing:8px;text-align:center;background:var(--panel-2);border:1px dashed var(--line-2);border-radius:14px;padding:14px;margin-top:12px}
+.checker{background-color:#0a0908;background-image:conic-gradient(#1b1a17 0 25%,transparent 0 50%,#1b1a17 0 75%,transparent 0);background-size:22px 22px;border:1px solid var(--line);border-radius:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-top:12px}
+.st{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;background:var(--panel-2);transition:border-color .12s,transform .16s var(--ease-out)}
+.st:hover{transform:translateY(-2px);border-color:var(--line-2)}
+.st.sel{border-color:var(--fg)}
+.st img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#0a0908}
+.st figcaption{font-size:12px;color:var(--fg-4);padding:8px 6px;text-align:center;line-height:1.4}
+.st figcaption b{display:block;color:var(--fg-3);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.del{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line-2);background:rgba(15,14,13,.78);color:var(--fg-2);font-size:15px;line-height:1;cursor:pointer;opacity:0;transition:opacity .12s}
+.st:hover .del,.st:focus-within .del{opacity:1}
+@media (hover:none){.del{opacity:1}}
+.del:hover{color:var(--bad);border-color:var(--bad)}
+.prev{margin-top:14px;text-align:center}
+.prev img{width:100%;max-width:300px;display:block;margin:0 auto}
+.prev .meta{text-align:center}
+.selbox{margin-top:12px;text-align:center}
+.selbox img{width:170px}
+.prev audio,.selbox audio{display:block;margin:10px auto 0;width:100%;max-width:300px;height:36px;color-scheme:dark}
+.badge{position:absolute;top:6px;left:6px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(15,14,13,.78);border:1px solid var(--line-2);color:var(--fg-2);pointer-events:none}
+select option:disabled{color:var(--fg-4)}
+.divider{height:1px;background:var(--line);margin:16px -22px 0}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line-2);color:var(--fg);padding:11px 20px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s var(--ease-out);max-width:92vw;z-index:20}
+.toast.show{opacity:1;transform:translateX(-50%)}
+footer{max-width:960px;margin:0 auto;padding:0 20px 40px;color:var(--fg-4);font-size:12px}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+<div class="brand">Passticker<small>figurinhas animadas</small></div>
+<div class="status"><span class="dot" id="dot"></span><span id="stTxt">conectando…</span></div>
+<button class="iconbtn" id="recBtn" title="Reconectar">Reconectar</button>
+<button class="iconbtn" id="outBtn" title="Sair e parear outro número" style="display:none">Trocar de número</button>
+</div></header>
+<div class="wrap">
+<div class="hero">
+<div class="eyebrow">Envio direto · sem WhatsApp Web · uso pessoal</div>
+<h1>Figurinhas animadas, <em>direto do PC.</em></h1>
+<p>Conecte uma vez, importe qualquer vídeo ou GIF e envie como figurinha de verdade — no tamanho exato que o WhatsApp exige.</p>
+</div>
+<section class="card" id="connCard">
+<div class="step"><i>01</i><div><h2>Conexão</h2><p>Pareia uma vez só, a sessão fica salva.</p></div></div>
+<div id="pairBox" style="display:none">
+<label class="lbl" for="pNum">Seu número (DDI + DDD, só dígitos)</label>
+<div class="row"><div><input id="pNum" type="text" inputmode="numeric" placeholder="5511999999999"></div><div class="shrink"><button class="btn" id="pairBtn">Gerar código</button></div></div>
+<div class="code tn" id="codeOut" style="display:none"></div>
+<div class="meta tn" id="pairAuto" style="display:none;text-align:center"></div>
+<p class="hint" id="pairHint" style="display:none">No celular: WhatsApp › Aparelhos conectados › Conectar aparelho › <b>Conectar com número de telefone</b> › digite o código (vale ±1 min).</p>
+</div>
+</section>
+<section class="card">
+<div class="step"><i>02</i><div><h2>Criar</h2><p>Qualquer arquivo vira 512×512 e menos de 500 KB sozinho.</p></div></div>
+<label class="lbl" for="up">Arquivo — mp4 · gif · webp · png · jpg</label>
+<div class="row">
+<div><input id="up" type="file" accept="video/*,image/*,.gif,.webp"></div>
+<div class="shrink" style="min-width:96px"><label class="lbl" style="margin-top:0" for="upFps">FPS</label><select id="upFps"><option>8</option><option>10</option><option>12</option><option selected>15</option><option>20</option><option>24</option></select></div>
+<div class="shrink" style="min-width:150px"><label class="lbl" style="margin-top:0" for="upFit">Enquadrar</label><select id="upFit"><option value="cover">Preencher (corta)</option><option value="contain">Original (inteira)</option></select></div>
+<div class="shrink"><button class="btn" id="upBtn">Converter</button></div>
+</div>
+<div class="row">
+<div class="shrink" style="min-width:190px"><label class="lbl" for="upSom">Som</label><select id="upSom"><option value="sem" selected>Sem som</option><option value="video">Áudio do vídeo</option><option value="separado">Áudio separado</option></select></div>
+<div id="audBox" style="display:none"><label class="lbl" for="upAud">Áudio · mp3 · m4a · aac · wav · ogg · opus · flac · até 10s</label><input id="upAud" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac"></div>
+</div>
+<div class="meta" id="upFile"></div>
+<div class="meta" id="audFile"></div>
+<div class="meta tn" id="upMeta"></div>
+<div class="prev" id="prevBox" style="display:none">
+<img id="prevImg" class="checker" alt="Prévia da figurinha">
+<audio id="prevAud" controls preload="none" style="display:none"></audio>
+<div class="meta" id="prevMeta"></div>
+</div>
+<div class="divider"></div>
+<div class="grid" id="gal" style="margin-top:14px"></div>
+</section>
+<section class="card">
+<div class="step"><i>03</i><div><h2>Enviar</h2><p>Ela chega animada no chat.</p></div></div>
+<div class="selbox" id="selBox" style="display:none">
+<img id="selImg" class="checker" alt="Figurinha selecionada">
+<audio id="selAud" controls preload="none" style="display:none"></audio>
+<div class="meta tn" id="selMeta"></div>
+<div style="margin-top:8px"><button class="btn ghost" id="delBtn">Excluir figurinha</button></div>
+</div>
+<label class="lbl" for="to">Número destino (DDI + DDD, só dígitos)</label>
+<div class="row"><div><input id="to" type="text" inputmode="numeric" placeholder="5511999999999"></div><div class="shrink"><button class="btn" id="sendBtn">Enviar figurinha</button></div></div>
+<p class="hint">Confira a prévia acima antes de mandar.</p>
+</section>
+</div>
+<footer>Uso pessoal — nada sai do seu PC além da figurinha enviada.</footer>
+<div class="toast" id="toast"></div>
+<script>
+const $=id=>document.getElementById(id);
+let sel=null;
+let pairBusy=false,lastCodeAt=0,autoOnce=false;
+const numOk=s=>(String(s||'').replace(/\D/g,'')||'').length>=10;
+const savedNum=()=>localStorage.getItem('bypass-num-v2')||'';
+function rememberNum(n){n=String(n||'').replace(/\D/g,'');if(n.length>=10)localStorage.setItem('bypass-num-v2',n)}
+function showCode(code,auto){
+ lastCodeAt=Date.now();
+ $('codeOut').style.display='block';$('codeOut').textContent=code.slice(0,4)+'-'+code.slice(4);
+ $('pairHint').style.display='block';
+ const pa=$('pairAuto');pa.style.display='block';
+ pa.textContent=(auto?'gerado sozinho':'gerado')+' às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · vale ±1 min'+(auto?' · renova sozinho':'');
+}
+async function genCode(num){
+ const r=await fetch('/api/pair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({number:num})});
+ const j=await r.json();
+ if(!j.ok)throw new Error(j.erro);
+ return j;
+}
+async function maybeAutoPair(j){
+ if(j.connected||j.registered||pairBusy||autoOnce)return;
+ const typed=$('pNum').value.replace(/\D/g,'');
+ const num=numOk(typed)?typed:savedNum();
+ if(!numOk(num))return; // sem número conhecido: usuário digita uma vez
+ autoOnce=true;
+ pairBusy=true;
+ try{
+  $('codeOut').style.display='block';$('codeOut').textContent='gerando…';
+  const jj=await genCode(num);
+  if(jj.already){status();return}
+  rememberNum(num);showCode(jj.code,true);
+  toast('Código novo no site — digite no celular');
+ }catch(e){$('codeOut').textContent='falhou — clique em Gerar código'}
+ pairBusy=false;
+}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200)}
+async function status(){
+ try{const j=await(await fetch('/api/status')).json();
+  $('dot').className='dot'+(j.connected?' on':'');
+  $('stTxt').textContent=j.connected?`conectado · ${j.numero||j.me||''}`:(j.registered?'sincronizando… aguarde':'não pareado');
+  $('pairBox').style.display=(!j.connected&&!j.registered)?'block':'none';
+  $('outBtn').style.display=j.connected||j.registered?'inline-block':'none';
+  if(j.numero && !$('to').value)$('to').value=j.numero;
+  if(!j.connected&&!j.registered)maybeAutoPair(j);
+  if(j.connected)lastCodeAt=Date.now();
+ }catch{}
+}
+async function gal(){
+ const j=await(await fetch('/api/stickers')).json();
+ window._files=Object.fromEntries(j.files.map(f=>[f.name,f]));
+ $('gal').innerHTML=j.files.map(f=>'<figure class="st'+(sel===f.name?' sel':'')+'" data-n="'+f.name+'">'+(f.som?'<span class="badge" title="Figurinha com som">som</span>':'')+'<button class="del" data-n="'+f.name+'" title="Excluir">×</button><img loading="lazy" src="/fig/'+encodeURIComponent(f.name)+'" alt="'+f.name+'"><figcaption><b>'+f.name+'</b><span class="tn">'+f.kb+' KB</span></figcaption></figure>').join('')||'<small style="color:var(--fg-4)">Nenhuma ainda — importe acima.</small>';
+ document.querySelectorAll('.st').forEach(el=>el.onclick=(e)=>{
+  if(e.target.classList.contains('del'))return;
+  sel=el.dataset.n;gal();showSel();
+ });
+ document.querySelectorAll('.del').forEach(el=>el.onclick=async(e)=>{
+  e.stopPropagation();
+  if(!confirm('Excluir '+el.dataset.n+'?'))return;
+  const jj=await(await fetch('/api/stickers/'+encodeURIComponent(el.dataset.n),{method:'DELETE'})).json();
+  if(!jj.ok)return toast('Erro ao excluir');
+  if(sel===el.dataset.n){sel=null;hideSel();$('prevBox').style.display='none';$('prevAud').pause()}
+  gal();toast('Excluída.');
+ });
+}
+function hideSel(){$('selBox').style.display='none';const a=$('selAud');a.pause();a.style.display='none'}
+function showSel(){
+ const f=window._files&&window._files[sel];
+ if(!f){hideSel();return}
+ $('selBox').style.display='block';
+ $('selImg').src='/fig/'+encodeURIComponent(sel)+'?t='+Date.now();
+ $('selMeta').textContent=sel+' · '+f.kb+' KB'+(f.som?' · com som'+(f.somKb?' ('+f.somKb+' KB)':''):'');
+ const a=$('selAud');a.pause();
+ if(f.som){a.src='/audio/'+encodeURIComponent(sel.replace(/\.webp$/,'.ogg'))+'?t='+Date.now();a.style.display='block'}
+ else{a.removeAttribute('src');a.style.display='none'}
+}
+$('delBtn').onclick=async()=>{
+ if(!sel)return;
+ if(!confirm('Excluir '+sel+'?'))return;
+ if(!(await(await fetch('/api/stickers/'+encodeURIComponent(sel),{method:'DELETE'})).json()).ok)return toast('Erro ao excluir');
+ sel=null;hideSel();$('prevBox').style.display='none';$('prevAud').pause();gal();toast('Excluída.');
+};
+const isVideo=f=>!!f&&((f.type||'').startsWith('video')||/\.(mp4|mov|webm|mkv)$/i.test(f.name));
+function syncSom(){
+ const f=$('up').files[0];
+ const opt=$('upSom').querySelector('option[value=video]');
+ opt.disabled=!!f&&!isVideo(f);
+ if(opt.disabled&&$('upSom').value==='video'){$('upSom').value='sem';toast('Esse arquivo não é vídeo: som ajustado para "Sem som"')}
+ const sep=$('upSom').value==='separado';
+ $('audBox').style.display=sep?'block':'none';
+ const a=$('upAud').files[0];
+ $('audFile').textContent=sep&&a?'Áudio: '+a.name+' · '+(a.size/1024).toFixed(0)+' KB':'';
+ if(sep&&a){const el=document.createElement('audio');el.preload='metadata';el.onloadedmetadata=()=>{if(isFinite(el.duration))$('audFile').textContent+=' · '+el.duration.toFixed(1)+'s'+(el.duration>10?' (vai ser cortado em 10s)':'');URL.revokeObjectURL(el.src)};el.src=URL.createObjectURL(a)}
+}
+$('upSom').onchange=syncSom;
+$('upAud').onchange=syncSom;
+$('recBtn').onclick=async()=>{await fetch('/api/reconnect',{method:'POST'});toast('Reconectando…');setTimeout(status,3000)};
+$('outBtn').onclick=async()=>{
+ if(!confirm('Sair e parear outro número?'))return;
+ await fetch('/api/logout',{method:'POST'});
+ sel=null;$('selBox').style.display='none';
+ status();toast('Sessão encerrada — pareie o próximo número');
+};
+$('pairBtn').onclick=async()=>{
+ const b=$('pairBtn');b.disabled=true;b.textContent='Gerando… (até 30s)';
+ lastCodeAt=Date.now();
+ try{
+  const j=await genCode($('pNum').value);
+  if(j.already){toast('Já pareado');status();return}
+  rememberNum($('pNum').value);showCode(j.code,false);
+  toast('Digite o código no celular');
+ }catch(e){toast('Erro: '+e.message)}
+ b.disabled=false;b.textContent='Gerar código';
+};
+$('up').onchange=()=>{
+ const f=$('up').files[0];if(!f)return;
+ $('upMeta').textContent='';
+ $('upFile').textContent='Entrada: '+f.name+' · '+(f.size/1024).toFixed(0)+' KB · '+(f.type||'tipo desconhecido');
+ if(f.type.startsWith('video')){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{$('upFile').textContent+=' · '+v.duration.toFixed(1)+'s';URL.revokeObjectURL(v.src)};v.src=URL.createObjectURL(f)}
+ syncSom();
+};
+$('upBtn').onclick=async()=>{
+ if(!$('up').files[0])return toast('Escolha um arquivo');
+ const som=$('upSom').value;
+ if(som==='separado'&&!$('upAud').files[0])return toast('Escolha o arquivo de áudio');
+ const wantFps=+$('upFps').value;
+ const b=$('upBtn');b.disabled=true;
+ const t0=Date.now();
+ const tick=setInterval(()=>{b.textContent='Convertendo… '+((Date.now()-t0)/1000).toFixed(0)+'s'},500);
+ b.textContent='Convertendo…';
+ const fd=new FormData();fd.append('arquivo',$('up').files[0]);fd.append('fps',String(wantFps));fd.append('fit',$('upFit').value);fd.append('som',som);
+ if(som==='separado')fd.append('audio',$('upAud').files[0]);
+ $('prevAud').pause();
+ const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),300000);
+ try{
+  const r=await fetch('/api/upload',{method:'POST',body:fd,signal:ctrl.signal});
+  const j=await r.json();
+  if(!j.ok)throw new Error(j.erro);
+  sel=j.arquivo;await gal();showSel();
+  const reduziu=j.fps<wantFps?(' · reduzido '+wantFps+'→'+j.fps+' fps para caber'):'';
+  const fitTxt=j.fit==='contain'?' · original (inteira)':' · preencher';
+  $('upMeta').textContent=j.arquivo+' · '+j.kb+' KB / 500 KB · '+j.fps+' fps · '+j.frames+' frames · '+(+j.dur).toFixed(1)+'s'+fitTxt+(j.cortado?' · trecho cortado em 10s':'')+reduziu
+   +(j.som?' · som '+(j.som.origem==='video'?'do vídeo':'separado')+' '+(+j.som.dur).toFixed(1)+'s · '+j.som.kb+' KB'+(j.som.cortado?' (áudio cortado em 10s)':''):'');
+  $('prevBox').style.display='block';
+  $('prevImg').src='/fig/'+encodeURIComponent(j.arquivo)+'?t='+Date.now();
+  const pa=$('prevAud');
+  if(j.audioUrl){pa.src=j.audioUrl+'?t='+Date.now();pa.style.display='block'}else{pa.removeAttribute('src');pa.style.display='none'}
+  $('prevMeta').textContent=j.audioUrl?'Prévia de como vai chegar no chat, com o som convertido':'Prévia de como vai chegar no chat';
+  toast(j.som?'Figurinha com som pronta!':'Figurinha pronta!');
+ }catch(e){toast(e.name==='AbortError'?'Demorou demais, tente um arquivo menor':'Erro: '+e.message)}
+ clearInterval(tick);clearTimeout(to);
+ b.disabled=false;b.textContent='Converter';
+};
+$('sendBtn').onclick=async()=>{
+ if(!sel)return toast('Escolha uma figurinha');
+ if(($('to').value.replace(/\D/g,'')||'').length<10)return toast('Número inválido');
+ const b=$('sendBtn');b.disabled=true;b.textContent='Enviando…';
+ try{
+  const r=await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:sel,number:$('to').value})});
+  const j=await r.json();
+  if(!j.ok)throw new Error(j.erro);
+  rememberNum($('to').value);
+  toast(j.som?'Figurinha com som enviada!':'Figurinha enviada!');
+ }catch(e){toast('Erro: '+e.message)}
+ b.disabled=false;b.textContent='Enviar figurinha';
+};
+if(savedNum())$('pNum').value=savedNum();
+status();gal();setInterval(status,5000);
+</script>
+</body>
+</html>

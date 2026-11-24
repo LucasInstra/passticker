@@ -1,0 +1,8 @@
+node_modules/
+auth/
+figurinhas/
+*.log
+qr.png
+.env
+Thumbs.db
+.DS_Store
