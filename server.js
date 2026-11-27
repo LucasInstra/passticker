@@ -22,7 +22,7 @@ const FFMPEG = require('ffmpeg-static')
 const FFPROBE = require('ffprobe-static').path
 const pexec = promisify(execFile)
 
-const PORT = 8000
+const PORT = Number(process.env.PORT) || 8000
 const DIR = dirname(fileURLToPath(import.meta.url))
 const AUTH = join(DIR, 'auth')
 const FIG = join(DIR, 'figurinhas')
@@ -202,23 +202,28 @@ async function probe(src) {
 }
 
 const VIDEO_EXT = new Set(['.mp4', '.mov', '.webm', '.mkv'])
-const vfFor = (fit) => fit === 'contain'
+// crop = { x, y, s } em pixels do vídeo (já rotacionado): quadrado escolhido no painel
+const vfFor = (fit, crop) => crop
+  ? `crop=${crop.s}:${crop.s}:${crop.x}:${crop.y},scale=512:512:flags=lanczos`
+  : fit === 'contain'
   ? 'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0,format=yuva420p'
   : 'scale=512:512:force_original_aspect_ratio=increase:flags=lanczos,crop=512:512'
 
 // Extrai frames já em 512x512. Retorna { files, dur, srcDur } (dur em segundos).
-// trim10: só os primeiros 10s do vídeo (alinha imagem e som no modo "áudio do vídeo").
-async function extractFrames(src, ext, td, fit = 'cover', trim10 = false) {
+// ini/dur: trecho do vídeo (no máximo 10s); só esse trecho é decodificado.
+async function extractFrames(src, ext, td, fit = 'cover', { ini = 0, dur: want = 10, crop = null } = {}) {
   const { default: sharp } = await import('sharp')
-  const VF = vfFor(fit)
+  const VF = vfFor(fit, crop)
   const list = async () => (await readdir(td)).filter((f) => f.endsWith('.png')).sort().map((f) => join(td, f))
   if (VIDEO_EXT.has(ext)) {
     const info = await probe(src).catch(() => ({ dur: 0 }))
-    const dur = trim10 && info.dur > 0 ? Math.min(info.dur, 10) : info.dur
-    const exFps = dur > 0 ? Math.min(30, Math.max(10, Math.ceil(300 / dur))) : 30
-    const cut = trim10 ? ['-t', '10'] : []
-    await pexec(FFMPEG, ['-y', '-v', 'error', '-i', src, ...cut, '-vf', `fps=${exFps},${VF}`, join(td, 'f%04d.png')])
-    return { files: await list(), dur: dur || 0, srcDur: info.dur || 0 }
+    const start = info.dur > 0 ? Math.min(ini, Math.max(0, info.dur - 0.2)) : ini
+    const left = info.dur > 0 ? info.dur - start : 10
+    const dur = Math.max(0.2, Math.min(want, 10, left))
+    const exFps = 30
+    await pexec(FFMPEG, ['-y', '-v', 'error', '-ss', String(start), '-i', src, '-t', String(dur),
+      '-vf', `fps=${exFps},${VF}`, join(td, 'f%04d.png')])
+    return { files: await list(), dur, srcDur: info.dur || 0, start }
   }
   try {
     await pexec(FFMPEG, ['-y', '-v', 'error', '-i', src, '-vf', VF, join(td, 'f%04d.png')])
@@ -234,7 +239,8 @@ async function extractFrames(src, ext, td, fit = 'cover', trim10 = false) {
     for (let p = 0; p < pages; p++) {
       const out = join(td, `f${String(p).padStart(4, '0')}.png`)
       const sh = sharp(src, { animated: false, page: p })
-      if (fit === 'contain') await sh.resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(out)
+      if (crop) await sh.extract({ left: crop.x, top: crop.y, width: crop.s, height: crop.s }).resize(512, 512).png().toFile(out)
+      else if (fit === 'contain') await sh.resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(out)
       else await sh.resize(512, 512, { fit: 'cover' }).png().toFile(out)
       files.push(out)
     }
@@ -253,7 +259,7 @@ async function encodeSeq(seqDir, count, dest, fps, q) {
   ], { maxBuffer: 64 * 1024 * 1024 })
 }
 
-async function convertToSticker(src, dest, reqFps = 15, fit = 'cover', trim10 = false) {
+async function convertToSticker(src, dest, reqFps = 15, fit = 'cover', win = {}) {
   reqFps = Math.max(5, Math.min(24, parseInt(reqFps) || 15))
   fit = fit === 'contain' ? 'contain' : 'cover'
   const ext = ('.' + src.split('.').pop().toLowerCase()).slice(0, 5)
@@ -261,13 +267,13 @@ async function convertToSticker(src, dest, reqFps = 15, fit = 'cover', trim10 = 
   const { cp } = await import('node:fs/promises')
   const { mkdirSync } = await import('node:fs')
   try {
-    const { files: all, dur: srcDur, srcDur: origDur } = await extractFrames(src, ext, td, fit, trim10)
+    const { files: all, dur: srcDur, srcDur: origDur, start } = await extractFrames(src, ext, td, fit, win)
     const total = all.length
     if (!total) throw new Error('não consegui ler o arquivo')
     const effDur = Math.min(srcDur > 0 ? srcDur : total / 10, 10) // trava 10s
-    const cortado = (origDur ?? srcDur) > 10
+    const cortado = (origDur ?? srcDur) > srcDur + 0.05
     const mid = Math.max(8, Math.min(reqFps - 1, Math.floor(reqFps * 0.6)))
-    const ladder = [[reqFps, 65], [reqFps, 50], [mid, 50], [8, 40]]
+    const ladder = [[reqFps, 65], [reqFps, 50], [mid, 50], [8, 40], [6, 30], [5, 20]]
     const seen = new Set()
     let lastErr = null
     for (const [fps, q] of ladder) {
@@ -290,7 +296,7 @@ async function convertToSticker(src, dest, reqFps = 15, fit = 'cover', trim10 = 
         const d = webpDims(await readFile(tmpOut))
         if (!d || d.w !== 512 || d.h !== 512) throw new Error('falha na conversão (dims)')
         await cp(tmpOut, dest)
-        return { kb: Math.round(sz / 1024), fps, fit, frames: count, dur: count / fps, cortado, pedido: reqFps }
+        return { kb: Math.round(sz / 1024), fps, fit: win.crop ? 'crop' : fit, frames: count, dur: count / fps, cortado, pedido: reqFps, start }
       }
     }
     throw new Error('não coube em 500KB — tente menos FPS ou trecho mais curto' + (lastErr ? '' : ''))
@@ -340,16 +346,30 @@ async function probeAudio(src) {
 }
 
 // Converte para OGG/Opus mono 48 kHz ~48 kbps, máximo 10s.
-async function convertAudio(src, dest) {
+async function convertAudio(src, dest, { ini = 0, dur = MAX_AUDIO } = {}) {
   const before = await probeAudio(src).catch(() => ({ has: false, dur: 0 }))
   if (!before.has) throw new Error('o arquivo não tem faixa de áudio')
-  await pexec(FFMPEG, ['-y', '-v', 'error', '-i', src, '-t', String(MAX_AUDIO), '-vn',
-    '-ac', '1', '-ar', '48000', '-c:a', 'libopus', '-b:a', '48k', '-f', 'ogg', dest])
+  // O AAC de vídeos MP4 (ex.: do WhatsApp) pode começar antes de 0; o OGG sai com start_time
+  // negativo e o celular recusa tocar o som da figurinha. Passar por WAV (PCM sem timestamps)
+  // garante que o Opus comece exatamente em 0, qualquer que seja a origem.
+  const wav = dest + '.tmp.wav'
+  try {
+    const t = Math.max(0.2, Math.min(dur, MAX_AUDIO))
+    await pexec(FFMPEG, ['-y', '-v', 'error', '-ss', String(Math.max(0, ini)), '-i', src, '-t', String(t), '-vn',
+      '-ac', '1', '-ar', '48000', '-c:a', 'pcm_s16le', '-f', 'wav', wav])
+    await pexec(FFMPEG, ['-y', '-v', 'error', '-f', 'wav', '-i', wav,
+      '-af', 'asetpts=PTS-STARTPTS',
+      '-c:a', 'libopus', '-b:a', '48k', '-f', 'ogg', dest])
+  } finally {
+    await rm(wav, { force: true }).catch(() => {})
+  }
   const s = await stat(dest).catch(() => null)
   if (!s || !s.size) throw new Error('falha ao converter o áudio')
+  const { stdout: st } = await pexec(FFPROBE, ['-v', 'error', '-show_entries', 'stream=start_pts', '-of', 'csv=p=0', dest])
+  if (parseInt(st) < 0) throw new Error('o áudio convertido começou antes de 0')
   const after = await probeAudio(dest)
   if (after.codec !== 'opus' || !(after.dur > 0)) throw new Error('falha ao converter o áudio')
-  return { dur: Math.round(after.dur * 10) / 10, kb: Math.max(1, Math.round(s.size / 1024)), cortado: before.dur > MAX_AUDIO + 0.05 }
+  return { dur: Math.round(after.dur * 10) / 10, kb: Math.max(1, Math.round(s.size / 1024)), cortado: before.dur > after.dur + 0.1 }
 }
 
 function slug(s) {
@@ -374,15 +394,24 @@ async function readBody(req, max = 60 * 1024 * 1024) {
   return Buffer.concat(chunks)
 }
 function parseMultipart(buf, boundary) {
+  // trabalha direto no Buffer: vídeos grandes não viram uma string gigante na memória
   const fields = {}, files = {}
-  for (const part of buf.toString('latin1').split('--' + boundary)) {
+  const sep = Buffer.from('--' + boundary)
+  const parts = []
+  for (let p = buf.indexOf(sep); p >= 0;) {
+    const n = buf.indexOf(sep, p + sep.length)
+    if (n < 0) break
+    parts.push(buf.subarray(p + sep.length, n))
+    p = n
+  }
+  for (const part of parts) {
     const i = part.indexOf('\r\n\r\n')
     if (i < 0) continue
-    const head = part.slice(0, i)
-    let content = Buffer.from(part.slice(i + 4), 'latin1')
-    if (content.slice(-2).toString() === '\r\n') content = content.slice(0, -2)
+    const head = part.subarray(0, i).toString('utf-8')
+    let content = part.subarray(i + 4)
+    if (content.length >= 2 && content[content.length - 2] === 13 && content[content.length - 1] === 10) content = content.subarray(0, -2)
     const m = head.match(/name="([^"]+)"/)
-    if (!m || !content.length || content.toString() === '--') continue
+    if (!m || !content.length) continue
     const fm = head.match(/filename="([^"]*)"/)
     if (fm && fm[1]) files[m[1]] = { filename: fm[1], data: content }
     else fields[m[1]] = content.toString('utf-8')
@@ -488,7 +517,7 @@ const server = createServer(async (req, res) => {
       const ct = req.headers['content-type'] || ''
       const m = ct.match(/boundary=([^;]+)/)
       if (!m) return json(res, { ok: false, erro: 'form inválido' }, 400)
-      const { files, fields } = parseMultipart(await readBody(req), m[1])
+      const { files, fields } = parseMultipart(await readBody(req, 400 * 1024 * 1024), m[1])
       const up = files.arquivo
       if (!up?.data.length) return json(res, { ok: false, erro: 'sem arquivo' }, 400)
       const ext = ('.' + (up.filename || '').split('.').pop().toLowerCase()).slice(0, 5)
@@ -496,6 +525,14 @@ const server = createServer(async (req, res) => {
       const reqFps = Math.max(5, Math.min(24, parseInt(fields.fps) || 15))
       const fit = fields.fit === 'contain' ? 'contain' : 'cover'
       const som = ['video', 'separado'].includes(fields.som) ? fields.som : 'sem'
+      const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) && n >= 0 ? n : d }
+      const ini = num(fields.ini, 0), dur = Math.min(10, num(fields.dur, 10) || 10)
+      const aIni = num(fields.aIni, 0), aDur = Math.min(MAX_AUDIO, num(fields.aDur, MAX_AUDIO) || MAX_AUDIO)
+      let crop = null
+      if (fields.crop) {
+        const [x, y, s] = String(fields.crop).split(',').map((v) => Math.round(Number(v)))
+        if ([x, y, s].every(Number.isFinite) && x >= 0 && y >= 0 && s >= 16) crop = { x, y, s: s - (s % 2) }
+      }
       const aup = files.audio
       let aext = ''
       if (som === 'video' && !VIDEO_EXT.has(ext)) return json(res, { ok: false, erro: 'áudio do vídeo só funciona com vídeo (mp4/mov/webm/mkv)' }, 400)
@@ -522,12 +559,13 @@ const server = createServer(async (req, res) => {
         let name = base + '.webp', i = 1
         while (existsSync(join(FIG, name)) || existsSync(join(FIG, sidecarOf(name)))) name = `${base}-${++i}.webp`
         const dest = join(FIG, name)
-        const r = await convertToSticker(src, dest, reqFps, fit, som === 'video')
+        const r = await convertToSticker(src, dest, reqFps, fit, { ini, dur, crop })
         if (!asrc) return json(res, { ok: true, arquivo: name, ...r })
         const ogg = sidecarOf(name)
         let a
         try {
-          a = await convertAudio(asrc, join(FIG, ogg))
+          // áudio do vídeo acompanha o trecho da imagem; áudio separado tem trecho próprio
+          a = await convertAudio(asrc, join(FIG, ogg), som === 'video' ? { ini: r.start ?? ini, dur: r.dur } : { ini: aIni, dur: aDur })
         } catch (e) {
           await rm(dest, { force: true }).catch(() => {})
           await rm(join(FIG, ogg), { force: true }).catch(() => {})

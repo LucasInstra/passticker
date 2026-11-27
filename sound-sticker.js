@@ -1,7 +1,7 @@
-// Figurinha com som: o WhatsApp guarda o áudio dentro da própria StickerMessage,
-// no campo 26 (`audioMessage`, do tipo Message.AudioMessage).
-// O proto do Baileys ainda não conhece esse campo, então ele é injetado aqui
-// no encoder, em runtime, sem alterar node_modules.
+// Figurinha com som: o WhatsApp atual envia a figurinha embrulhada no campo 134 da Message
+// (134 { 1: Message { 26: StickerMessage { ..., 24, 25, 26: AudioMessage } } }).
+// O proto do Baileys não conhece o campo 134 nem os campos 24-26 da StickerMessage,
+// então eles são injetados aqui no encoder, em runtime, sem alterar node_modules.
 import { proto, prepareWAMessageMedia, generateWAMessageFromContent } from '@whiskeysockets/baileys'
 
 const TAG_AUDIO = 26 * 8 + 2 // field 26, wire type 2 (length-delimited) = 210
@@ -17,9 +17,45 @@ export async function buildSoundStickerMessage({ jid, userJid, stickerBuf, audio
     { audio: audioBuf, mimetype: SOUND_MIME, seconds: Math.max(1, Math.round(seconds || 1)), ptt: false },
     { upload }
   )
+  // o cliente oficial não manda ptt no áudio da figurinha
+  delete audioMedia.audioMessage.ptt
   stickerMedia.stickerMessage.audioMessage = audioMedia.audioMessage
-  return generateWAMessageFromContent(jid, stickerMedia, { userJid })
+  // WebP animado tem chunk ANIM logo no cabeçalho; o cliente oficial marca isAnimated
+  if (stickerBuf.subarray(0, 64).includes('ANIM')) stickerMedia.stickerMessage.isAnimated = true
+  // demais campos que o cliente oficial preenche na figurinha com som
+  const sm = stickerMedia.stickerMessage
+  sm.firstFrameLength = webpLengthBeforeExif(stickerBuf) // tamanho do WebP antes do chunk EXIF
+  sm.contextInfo = { ...(sm.contextInfo || {}), disappearingMode: { initiator: 0 } }
+  sm.stickerSentTs = Date.now()
+  sm.isLottie = false
+  const msg = generateWAMessageFromContent(jid, stickerMedia, { userJid })
+
+  // O cliente oficial envia a figurinha com som embrulhada no campo 134 da Message
+  // (134 { 1: Message { 26: StickerMessage { ..., 26: AudioMessage } } }).
+  // `outer` só tem o envelope como campo próprio (é o que vai no fio); a stickerMessage fica
+  // no protótipo para o Baileys continuar marcando o envio como mediatype=sticker.
+  const inner = msg.message
+  const view = Object.create(proto.Message.prototype)
+  view.stickerMessage = inner.stickerMessage
+  const outer = Object.create(view)
+  outer[WRAP] = inner
+  msg.message = outer
+
+  return msg
 }
+
+function webpLengthBeforeExif(buf) {
+  let p = 12
+  while (p + 8 <= buf.length) {
+    if (buf.toString('latin1', p, p + 4) === 'EXIF') return p
+    const n = buf.readUInt32LE(p + 4)
+    p += 8 + n + (n & 1)
+  }
+  return buf.length
+}
+
+const WRAP = Symbol('stickerWithSound')
+const TAG_WRAP = 134 * 8 + 2 // field 134, wire type 2 = 1074
 
 export function patchSoundStickerProto() {
   if (patched) return
@@ -29,11 +65,28 @@ export function patchSoundStickerProto() {
   const Audio = proto.Message.AudioMessage
   if (!Audio) throw new Error('Message.AudioMessage não existe no proto do Baileys')
 
+  // envelope 134: mesmo formato de FutureProofMessage (campo 1 = Message)
+  const Message = proto.Message
+  const FutureProof = proto.Message.FutureProofMessage
+  const msgEncodeOriginal = Message.encode
+  Message.encode = function encode(m, w) {
+    w = msgEncodeOriginal.call(this, m, w)
+    if (m && m[WRAP]) {
+      w.uint32(TAG_WRAP).fork()
+      FutureProof.encode({ message: m[WRAP] }, w)
+      w.ldelim()
+    }
+    return w
+  }
+
   const encodeOriginal = Sticker.encode
   Sticker.encode = function encode(m, w) {
     // o encoder original não conhece audioMessage, então escreve tudo e depois anexa o campo 26
     w = encodeOriginal(m, w)
     if (m && m.audioMessage != null) {
+      // campos 24 (varint 0) e 25 (bytes vazios): desconhecidos do proto, mas o cliente oficial manda
+      w.uint32(24 * 8 + 0).uint32(0)
+      w.uint32(25 * 8 + 2).uint32(0)
       w.uint32(TAG_AUDIO).fork()
       Audio.encode(m.audioMessage, w)
       w.ldelim()

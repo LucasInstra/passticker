@@ -99,6 +99,32 @@ select option:disabled{color:var(--fg-4)}
 .divider{height:1px;background:var(--line);margin:16px -22px 0}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line-2);color:var(--fg);padding:11px 20px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s var(--ease-out);max-width:92vw;z-index:20}
 .toast.show{opacity:1;transform:translateX(-50%)}
+.ed{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel-2);padding:14px}
+.ed-stage{display:flex;justify-content:center}
+.ed-wrap{position:relative;display:inline-block;line-height:0;user-select:none;touch-action:none;overflow:hidden;border-radius:8px}
+.ed-wrap video,.ed-wrap img{display:block;max-width:100%;max-height:380px;width:auto;height:auto}
+.crop{position:absolute;border:2px solid var(--fg);box-shadow:0 0 0 9999px rgba(15,14,13,.62);cursor:move;border-radius:4px}
+.crop::after{content:"";position:absolute;inset:33.3% 0;border-top:1px solid #fafaf955;border-bottom:1px solid #fafaf955;pointer-events:none}
+.crop::before{content:"";position:absolute;inset:0 33.3%;border-left:1px solid #fafaf955;border-right:1px solid #fafaf955;pointer-events:none}
+.rng{display:grid;grid-template-columns:110px 1fr 58px;align-items:center;gap:10px;margin-top:10px;font-size:12.5px;color:var(--fg-3)}
+.rng input[type=range]{width:100%;accent-color:var(--fg)}
+.rng output{text-align:right;color:var(--fg-2)}
+.ed-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.ed-actions .btn{padding:8px 14px;font-size:13px}
+.err{color:var(--bad)}
+/* faixa de corte estilo WhatsApp: miniaturas/onda + janela amarela arrastável */
+.trw{margin-top:14px;user-select:none}
+.tr-time{text-align:center;font-size:15px;color:var(--fg);margin-bottom:10px;letter-spacing:.02em}
+.tr{position:relative;height:60px;touch-action:none}
+.tr canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:6px;background:#0a0908}
+.tr-dim{position:absolute;top:0;bottom:0;background:rgba(15,14,13,.66);pointer-events:none}
+.tr-win{position:absolute;top:-4px;bottom:-4px;border:4px solid #F5C518;border-left-width:18px;border-right-width:18px;border-radius:6px;cursor:grab;box-sizing:border-box}
+.tr-win:active{cursor:grabbing}
+.tr-h{position:absolute;top:-4px;bottom:-4px;width:26px;cursor:ew-resize;display:flex;align-items:center;justify-content:center;color:#0F0E0D;font:700 18px/1 var(--sans)}
+.tr-h.l{left:-22px}.tr-h.r{right:-22px}
+.tr-ph{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff;box-shadow:0 0 4px #000;pointer-events:none;display:none}
+.tr-info{display:flex;gap:8px;margin-top:12px;align-items:center}
+.tr-chip{background:var(--panel-3);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:13px;color:var(--fg-2)}
 footer{max-width:960px;margin:0 auto;padding:0 20px 40px;color:var(--fg-4);font-size:12px}
 </style>
 </head>
@@ -131,14 +157,34 @@ footer{max-width:960px;margin:0 auto;padding:0 20px 40px;color:var(--fg-4);font-
 <div class="row">
 <div><input id="up" type="file" accept="video/*,image/*,.gif,.webp"></div>
 <div class="shrink" style="min-width:96px"><label class="lbl" style="margin-top:0" for="upFps">FPS</label><select id="upFps"><option>8</option><option>10</option><option>12</option><option selected>15</option><option>20</option><option>24</option></select></div>
-<div class="shrink" style="min-width:150px"><label class="lbl" style="margin-top:0" for="upFit">Enquadrar</label><select id="upFit"><option value="cover">Preencher (corta)</option><option value="contain">Original (inteira)</option></select></div>
+<div class="shrink" style="min-width:150px"><label class="lbl" style="margin-top:0" for="upFit">Enquadrar</label><select id="upFit"><option value="crop" selected>Recortar 1:1 (escolher)</option><option value="cover">Preencher (centro)</option><option value="contain">Original (inteira)</option></select></div>
 <div class="shrink"><button class="btn" id="upBtn">Converter</button></div>
 </div>
 <div class="row">
 <div class="shrink" style="min-width:190px"><label class="lbl" for="upSom">Som</label><select id="upSom"><option value="sem" selected>Sem som</option><option value="video">Áudio do vídeo</option><option value="separado">Áudio separado</option></select></div>
 <div id="audBox" style="display:none"><label class="lbl" for="upAud">Áudio · mp3 · m4a · aac · wav · ogg · opus · flac · até 10s</label><input id="upAud" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac"></div>
 </div>
+<div class="ed" id="audEd" style="display:none">
+ <div class="trw" id="aTrw"></div>
+ <div hidden>
+ <div class="rng"><span>Início do áudio</span><input id="aIni" type="range" min="0" max="0" step="0.1" value="0"><output id="aIniOut" class="tn">0.0s</output></div>
+ <div class="rng"><span>Duração</span><input id="aDur" type="range" min="0.5" max="10" step="0.1" value="10"><output id="aDurOut" class="tn">10.0s</output></div>
+ </div>
+ <div class="ed-actions"><button class="btn ghost" id="aPlay">▶ Ouvir trecho</button><audio id="edAud" preload="metadata"></audio></div>
+</div>
 <div class="meta" id="upFile"></div>
+<div class="ed" id="edBox" style="display:none">
+ <div class="ed-stage"><div class="ed-wrap" id="edWrap"><video id="edVid" muted playsinline preload="metadata" style="display:none"></video><img id="edImg" alt="Arquivo escolhido" style="display:none"><div class="crop" id="edCrop" style="display:none"></div></div></div>
+ <div id="zoomRow" class="rng"><span>Zoom</span><input id="edZoom" type="range" min="1" max="4" step="0.01" value="1"><output id="edZoomOut" class="tn">1.0×</output></div>
+ <div id="trimBox" style="display:none">
+  <div class="trw" id="vTrw"></div>
+  <div hidden>
+  <div class="rng"><span>Início do vídeo</span><input id="vIni" type="range" min="0" max="0" step="0.1" value="0"><output id="vIniOut" class="tn">0.0s</output></div>
+  <div class="rng"><span>Duração</span><input id="vDur" type="range" min="0.5" max="10" step="0.1" value="10"><output id="vDurOut" class="tn">10.0s</output></div>
+  </div>
+ </div>
+ <div class="ed-actions"><button class="btn ghost" id="vPlay" style="display:none">▶ Ver trecho</button><span class="meta" id="edHint" style="margin-top:0"></span></div>
+</div>
 <div class="meta" id="audFile"></div>
 <div class="meta tn" id="upMeta"></div>
 <div class="prev" id="prevBox" style="display:none">
@@ -256,8 +302,180 @@ function syncSom(){
  $('audBox').style.display=sep?'block':'none';
  const a=$('upAud').files[0];
  $('audFile').textContent=sep&&a?'Áudio: '+a.name+' · '+(a.size/1024).toFixed(0)+' KB':'';
- if(sep&&a){const el=document.createElement('audio');el.preload='metadata';el.onloadedmetadata=()=>{if(isFinite(el.duration))$('audFile').textContent+=' · '+el.duration.toFixed(1)+'s'+(el.duration>10?' (vai ser cortado em 10s)':'');URL.revokeObjectURL(el.src)};el.src=URL.createObjectURL(a)}
+ $('audEd').style.display=sep&&a?'block':'none';
+ if(sep&&a&&a!==audFileLoaded){
+  audFileLoaded=a;const el=$('edAud');el.pause();if(el.src)URL.revokeObjectURL(el.src);
+  el.onloadedmetadata=()=>{const d=isFinite(el.duration)?el.duration:10;audLen=d;$('aIni').max=Math.max(0,d-0.5).toFixed(1);$('aIni').value=0;$('aDur').value=Math.min(10,d).toFixed(1);syncAud();
+   requestAnimationFrame(()=>{aTrim.load(d);paintWave(a)});$('audFile').textContent+=' · '+d.toFixed(1)+'s'};
+  el.src=URL.createObjectURL(a);
+ }else if(sep&&a&&audLen)$('audFile').textContent+=' · '+audLen.toFixed(1)+'s';
+ edHint();
 }
+// ---------- trecho do áudio separado ----------
+let audFileLoaded=null,audLen=0;
+function syncAud(){
+ const ini=+$('aIni').value,max=Math.max(0.5,Math.min(10,(audLen||10)-ini));
+ $('aDur').max=max.toFixed(1);if(+$('aDur').value>max)$('aDur').value=max.toFixed(1);
+ $('aIniOut').textContent=ini.toFixed(1)+'s';$('aDurOut').textContent=(+$('aDur').value).toFixed(1)+'s';
+}
+$('aIni').oninput=syncAud;$('aDur').oninput=syncAud;
+$('aPlay').onclick=()=>{const el=$('edAud');if(!el.paused){el.pause();return}el.currentTime=+$('aIni').value;el.play()};
+$('edAud').onplay=()=>$('aPlay').textContent='❚❚ Parar';
+$('edAud').onpause=()=>$('aPlay').textContent='▶ Ouvir trecho';
+$('edAud').ontimeupdate=()=>{const el=$('edAud');if(el.currentTime>=+$('aIni').value+ +$('aDur').value)el.pause()};
+
+// ---------- editor: recorte 1:1 e trecho do vídeo ----------
+const ed={W:0,H:0,cx:.5,cy:.5,z:1,media:null,isVid:false,len:0};
+function edSide(){return Math.min(ed.W,ed.H)/ed.z}
+function edClamp(){
+ const s=edSide(),hx=s/2/ed.W,hy=s/2/ed.H;
+ ed.cx=Math.min(1-hx,Math.max(hx,ed.cx));ed.cy=Math.min(1-hy,Math.max(hy,ed.cy));
+}
+function edHint(){
+ const fit=$('upFit').value;
+ let t=fit==='crop'?'Arraste o quadrado para escolher o que entra na figurinha; o zoom (ou a rodinha do mouse) aproxima.':fit==='contain'?'A imagem inteira entra, com bordas transparentes.':'Corta pelo centro.';
+ if($('upSom').value==='video'&&ed.isVid)t+=' O som do vídeo acompanha o trecho escolhido.';
+ $('edHint').textContent=t;
+}
+function edDraw(){
+ const crop=$('upFit').value==='crop'&&ed.media;
+ $('edCrop').style.display=crop?'block':'none';$('zoomRow').style.display=crop?'grid':'none';
+ edHint();
+ if(!crop)return;
+ edClamp();
+ const r=ed.media.getBoundingClientRect();if(!r.width)return;
+ const k=r.width/ed.W,s=edSide()*k;
+ const c=$('edCrop').style;c.width=c.height=s+'px';c.left=(ed.cx*r.width-s/2)+'px';c.top=(ed.cy*r.height-s/2)+'px';
+ $('edZoomOut').textContent=ed.z.toFixed(1)+'×';
+}
+function edCropPx(){
+ if($('upFit').value!=='crop'||!ed.W)return '';
+ edClamp();const s=Math.floor(edSide());
+ const x=Math.round(ed.cx*ed.W-s/2),y=Math.round(ed.cy*ed.H-s/2);
+ return [Math.max(0,Math.min(ed.W-s,x)),Math.max(0,Math.min(ed.H-s,y)),s].join(',');
+}
+function edLoad(f){
+ const v=$('edVid'),im=$('edImg');v.pause();
+ [v,im].forEach(el=>{if(el.src&&el.src.startsWith('blob:'))URL.revokeObjectURL(el.src);el.removeAttribute('src');el.style.display='none'});
+ ed.isVid=isVideo(f);ed.cx=ed.cy=.5;ed.z=1;$('edZoom').value=1;ed.media=null;ed.W=ed.H=0;ed.len=0;
+ $('edBox').style.display='block';$('trimBox').style.display='none';$('vPlay').style.display='none';
+ const url=URL.createObjectURL(f);
+ if(ed.isVid){
+  v.onloadedmetadata=async()=>{
+   // alguns WebM não informam a duração: pular para o fim força o navegador a descobrir
+   if(!isFinite(v.duration)){await new Promise(r=>{const to=setTimeout(r,3000);v.ondurationchange=()=>{if(isFinite(v.duration)){clearTimeout(to);r()}};v.currentTime=1e9});v.ondurationchange=null;v.currentTime=0}
+   ed.W=v.videoWidth;ed.H=v.videoHeight;ed.len=isFinite(v.duration)?v.duration:0;ed.media=v;v.style.display='block';
+   $('trimBox').style.display='block';$('vPlay').style.display='inline-block';
+   $('vIni').max=Math.max(0,ed.len-0.5).toFixed(1);$('vIni').value=0;$('vDur').value=Math.min(10,ed.len||10).toFixed(1);syncTrim();
+   requestAnimationFrame(()=>{vTrim.load(ed.len||10);paintThumbs(url,ed.len||10,ed.W/ed.H)});
+   if(isFinite(v.duration))$('upFile').textContent+=' · '+v.duration.toFixed(1)+'s · '+v.videoWidth+'×'+v.videoHeight;
+   requestAnimationFrame(edDraw)};
+  v.onerror=()=>{$('edHint').textContent='O navegador não consegue mostrar esse vídeo; ele ainda pode ser convertido (recorte pelo centro).';$('upFit').value='cover'};
+  v.src=url;
+ }else{
+  im.onload=()=>{ed.W=im.naturalWidth;ed.H=im.naturalHeight;ed.media=im;im.style.display='block';requestAnimationFrame(edDraw)};
+  im.src=url;
+ }
+}
+function syncTrim(){
+ const ini=+$('vIni').value,max=Math.max(0.5,Math.min(10,(ed.len||10)-ini));
+ $('vDur').max=max.toFixed(1);if(+$('vDur').value>max)$('vDur').value=max.toFixed(1);
+ $('vIniOut').textContent=ini.toFixed(1)+'s';$('vDurOut').textContent=(+$('vDur').value).toFixed(1)+'s';
+ const v=$('edVid');if(v.paused&&ed.media)v.currentTime=ini;
+}
+$('vIni').oninput=syncTrim;$('vDur').oninput=syncTrim;
+$('vPlay').onclick=()=>{const v=$('edVid');if(!v.paused){v.pause();return}v.muted=$('upSom').value!=='video';v.currentTime=+$('vIni').value;v.play()};
+$('edVid').onplay=()=>$('vPlay').textContent='❚❚ Parar';
+$('edVid').onpause=()=>$('vPlay').textContent='▶ Ver trecho';
+$('edVid').ontimeupdate=()=>{const v=$('edVid');if(!v.paused&&v.currentTime>=+$('vIni').value+ +$('vDur').value)v.currentTime=+$('vIni').value};
+$('edZoom').oninput=()=>{ed.z=+$('edZoom').value;edDraw()};
+$('upFit').onchange=edDraw;
+
+// ---------- faixa de corte estilo WhatsApp ----------
+// Arrastar as bordas amarelas muda início/fim; arrastar o meio desliza a janela; clicar fora leva a janela até lá.
+// Os valores ficam nos inputs escondidos (vIni/vDur, aIni/aDur), que é o que vai no envio.
+const fmtT=t=>{t=Math.max(0,t);const m=Math.floor(t/60),s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(1)};
+function makeTrim(host,iniEl,durEl,onChange){
+ iniEl.step=durEl.step='any';
+ host.innerHTML='<div class="tr-time tn"></div><div class="tr"><canvas></canvas><div class="tr-dim"></div><div class="tr-dim"></div><div class="tr-win"><span class="tr-h l">‹</span><span class="tr-h r">›</span></div><div class="tr-ph"></div></div><div class="tr-info tn"></div>';
+ const [time,bar,info]=host.children,cv=bar.querySelector('canvas'),[dl,dr]=bar.querySelectorAll('.tr-dim'),win=bar.querySelector('.tr-win'),ph=bar.querySelector('.tr-ph');
+ const T={len:0,min:0.5,max:10};
+ const get=()=>({ini:+iniEl.value,dur:+durEl.value});
+ function draw(){
+  if(!T.len)return;
+  const {ini,dur}=get(),a=ini/T.len*100,b=Math.min(100,(ini+dur)/T.len*100);
+  dl.style.left='0';dl.style.width=a+'%';dr.style.left=b+'%';dr.style.right='0';
+  win.style.left=a+'%';win.style.width=(b-a)+'%';
+  time.textContent=fmtT(ini)+' – '+fmtT(ini+dur);
+  info.innerHTML='<span class="tr-chip">'+dur.toFixed(1)+'s de '+fmtT(T.len)+'</span><span class="meta" style="margin-top:0">máximo 10s</span>';
+ }
+ function set(ini,end,show){
+  ini=Math.max(0,ini);end=Math.min(T.len,end);
+  iniEl.value=ini.toFixed(2);durEl.value=(end-ini).toFixed(2);
+  onChange&&onChange(show??ini);draw();
+ }
+ let drag=null;
+ const tAt=x=>{const r=bar.getBoundingClientRect();return Math.min(T.len,Math.max(0,(x-r.left)/r.width*T.len))};
+ bar.addEventListener('pointerdown',e=>{
+  if(!T.len)return;e.preventDefault();bar.setPointerCapture(e.pointerId);
+  const h=e.target.closest('.tr-h'),{ini,dur}=get(),t=tAt(e.clientX);
+  if(h)drag={k:h.classList.contains('l')?'l':'r'};
+  else if(e.target.closest('.tr-win'))drag={k:'m',off:t-ini,dur};
+  else{const s=Math.min(Math.max(0,t-dur/2),T.len-dur);set(s,s+dur);drag={k:'m',off:t-s,dur}}
+ });
+ bar.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const t=tAt(e.clientX),{ini,dur}=get(),end=ini+dur;
+  if(drag.k==='l'){const s=Math.min(Math.max(t,end-T.max,0),end-T.min);set(s,end,s)}
+  else if(drag.k==='r'){const en=Math.max(Math.min(t,ini+T.max,T.len),ini+T.min);set(ini,en,en)}
+  else{const s=Math.min(Math.max(0,t-drag.off),T.len-drag.dur);set(s,s+drag.dur,s)}
+ });
+ bar.addEventListener('pointerup',()=>drag=null);bar.addEventListener('pointercancel',()=>drag=null);
+ addEventListener('resize',draw);
+ return{
+  cv,draw,
+  load(len){T.len=len;T.min=Math.min(0.5,len);draw();const c=cv.getContext('2d');cv.width=cv.clientWidth*devicePixelRatio;cv.height=cv.clientHeight*devicePixelRatio;c.clearRect(0,0,cv.width,cv.height)},
+  playhead(t){if(t==null||!T.len){ph.style.display='none';return}ph.style.display='block';ph.style.left=(t/T.len*100)+'%'},
+ };
+}
+// miniaturas: um <video> escondido pula pelos instantes e desenha cada quadro na faixa
+let thumbTok=0;
+async function paintThumbs(url,len,aspect){
+ const tok=++thumbTok,cv=vTrim.cv,c=cv.getContext('2d'),H=cv.height,tw=Math.max(8,Math.round(H*Math.min(aspect||1,2))),n=Math.max(1,Math.ceil(cv.width/tw));
+ const v=document.createElement('video');v.muted=true;v.preload='auto';v.src=url;
+ await new Promise(r=>{v.onloadeddata=r;v.onerror=r});
+ for(let i=0;i<n&&tok===thumbTok;i++){
+  await new Promise(r=>{const done=()=>{clearTimeout(to);r()};const to=setTimeout(done,1500);v.onseeked=done;v.currentTime=Math.min(len-0.05,(i+0.5)/n*len)});
+  if(tok!==thumbTok)break;
+  const vw=v.videoWidth,vh=v.videoHeight;if(!vw)break;
+  const k=Math.max(tw/vw,H/vh),sw=tw/k,sh=H/k;
+  c.drawImage(v,(vw-sw)/2,(vh-sh)/2,sw,sh,i*tw,0,tw,H);
+ }
+ v.removeAttribute('src');v.load();
+}
+// onda do áudio: decodifica o arquivo e desenha os picos
+async function paintWave(file){
+ const tok=++waveTok,cv=aTrim.cv,c=cv.getContext('2d');
+ try{
+  const ac=new (window.AudioContext||window.webkitAudioContext)();
+  const buf=await ac.decodeAudioData(await file.arrayBuffer());ac.close();
+  if(tok!==waveTok)return;
+  const d=buf.getChannelData(0),W=cv.width,H=cv.height,step=Math.max(1,Math.floor(d.length/W)),bw=Math.max(2,Math.round(3*devicePixelRatio)),gap=Math.round(bw/2);
+  c.fillStyle='#D6D4CF';
+  for(let x=0;x<W;x+=bw+gap){let m=0;const s=Math.floor(x/W*d.length);for(let i=s;i<s+step*(bw+gap)&&i<d.length;i+=4)m=Math.max(m,Math.abs(d[i]));const h=Math.max(2,m*H*.9);c.fillRect(x,(H-h)/2,bw,h)}
+ }catch{}
+}
+let waveTok=0;
+const vTrim=makeTrim($('vTrw'),$('vIni'),$('vDur'),t=>{syncTrim();const v=$('edVid');if(v.paused&&ed.media)v.currentTime=t});
+const aTrim=makeTrim($('aTrw'),$('aIni'),$('aDur'),()=>{syncAud();const el=$('edAud');if(!el.paused)el.currentTime=+$('aIni').value});
+(function loop(){const v=$('edVid'),a=$('edAud');vTrim.playhead(v.paused?null:v.currentTime);aTrim.playhead(a.paused?null:a.currentTime);requestAnimationFrame(loop)})();
+addEventListener('resize',edDraw);
+(()=>{const c=$('edCrop');let drag=null;
+ c.onpointerdown=e=>{e.preventDefault();c.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,cx:ed.cx,cy:ed.cy}};
+ c.onpointermove=e=>{if(!drag||!ed.media)return;const r=ed.media.getBoundingClientRect();ed.cx=drag.cx+(e.clientX-drag.x)/r.width;ed.cy=drag.cy+(e.clientY-drag.y)/r.height;edDraw()};
+ c.onpointerup=c.onpointercancel=()=>drag=null;
+ $('edWrap').addEventListener('wheel',e=>{if($('upFit').value!=='crop'||!ed.media)return;e.preventDefault();ed.z=Math.min(4,Math.max(1,ed.z*(e.deltaY<0?1.08:1/1.08)));$('edZoom').value=ed.z;edDraw()},{passive:false});
+})();
 $('upSom').onchange=syncSom;
 $('upAud').onchange=syncSom;
 $('recBtn').onclick=async()=>{await fetch('/api/reconnect',{method:'POST'});toast('Reconectando…');setTimeout(status,3000)};
@@ -282,7 +500,7 @@ $('up').onchange=()=>{
  const f=$('up').files[0];if(!f)return;
  $('upMeta').textContent='';
  $('upFile').textContent='Entrada: '+f.name+' · '+(f.size/1024).toFixed(0)+' KB · '+(f.type||'tipo desconhecido');
- if(f.type.startsWith('video')){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{$('upFile').textContent+=' · '+v.duration.toFixed(1)+'s';URL.revokeObjectURL(v.src)};v.src=URL.createObjectURL(f)}
+ edLoad(f);
  syncSom();
 };
 $('upBtn').onclick=async()=>{
@@ -294,27 +512,45 @@ $('upBtn').onclick=async()=>{
  const t0=Date.now();
  const tick=setInterval(()=>{b.textContent='Convertendo… '+((Date.now()-t0)/1000).toFixed(0)+'s'},500);
  b.textContent='Convertendo…';
- const fd=new FormData();fd.append('arquivo',$('up').files[0]);fd.append('fps',String(wantFps));fd.append('fit',$('upFit').value);fd.append('som',som);
+ const fit=$('upFit').value;
+ const fd=new FormData();fd.append('fps',String(wantFps));fd.append('fit',fit==='contain'?'contain':'cover');fd.append('som',som);
+ const crop=edCropPx();if(crop)fd.append('crop',crop);
+ if(ed.isVid){fd.append('ini',$('vIni').value);fd.append('dur',$('vDur').value)}
+ if(som==='separado'){fd.append('aIni',$('aIni').value);fd.append('aDur',$('aDur').value)}
+ fd.append('arquivo',$('up').files[0]);
  if(som==='separado')fd.append('audio',$('upAud').files[0]);
- $('prevAud').pause();
- const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),300000);
+ $('prevAud').pause();$('edVid').pause();$('edAud').pause();
+ $('upMeta').textContent='';$('upMeta').classList.remove('err');
+ let phase='Enviando… 0%';clearInterval(tick);
+ const tick2=setInterval(()=>{b.textContent=phase==='Convertendo…'?'Convertendo… '+((Date.now()-t0)/1000).toFixed(0)+'s':phase},300);
  try{
-  const r=await fetch('/api/upload',{method:'POST',body:fd,signal:ctrl.signal});
-  const j=await r.json();
+  const j=await new Promise((ok,bad)=>{
+   const x=new XMLHttpRequest();x.open('POST','/api/upload');x.timeout=600000;x.responseType='json';
+   x.upload.onprogress=e=>{if(e.lengthComputable)phase=e.loaded<e.total?'Enviando… '+Math.round(e.loaded/e.total*100)+'%':'Convertendo…'};
+   x.upload.onload=()=>{phase='Convertendo…'};
+   x.onload=()=>ok(x.response||{ok:false,erro:'resposta inválida do servidor ('+x.status+')'});
+   x.onerror=()=>bad(new Error('a conexão com o servidor caiu (arquivo grande demais?)'));
+   x.ontimeout=()=>bad(Object.assign(new Error('timeout'),{name:'AbortError'}));
+   x.send(fd);
+  });
+  clearInterval(tick2);
   if(!j.ok)throw new Error(j.erro);
   sel=j.arquivo;await gal();showSel();
   const reduziu=j.fps<wantFps?(' · reduzido '+wantFps+'→'+j.fps+' fps para caber'):'';
-  const fitTxt=j.fit==='contain'?' · original (inteira)':' · preencher';
-  $('upMeta').textContent=j.arquivo+' · '+j.kb+' KB / 500 KB · '+j.fps+' fps · '+j.frames+' frames · '+(+j.dur).toFixed(1)+'s'+fitTxt+(j.cortado?' · trecho cortado em 10s':'')+reduziu
-   +(j.som?' · som '+(j.som.origem==='video'?'do vídeo':'separado')+' '+(+j.som.dur).toFixed(1)+'s · '+j.som.kb+' KB'+(j.som.cortado?' (áudio cortado em 10s)':''):'');
+  const fitTxt=j.fit==='contain'?' · original (inteira)':j.fit==='crop'?' · recorte 1:1':' · preencher';
+  $('upMeta').textContent=j.arquivo+' · '+j.kb+' KB / 500 KB · '+j.fps+' fps · '+j.frames+' frames · '+(+j.dur).toFixed(1)+'s'+fitTxt+(j.cortado?' · trecho':'')+reduziu
+   +(j.som?' · som '+(j.som.origem==='video'?'do vídeo':'separado')+' '+(+j.som.dur).toFixed(1)+'s · '+j.som.kb+' KB'+(j.som.cortado?' (trecho)':''):'');
   $('prevBox').style.display='block';
   $('prevImg').src='/fig/'+encodeURIComponent(j.arquivo)+'?t='+Date.now();
   const pa=$('prevAud');
   if(j.audioUrl){pa.src=j.audioUrl+'?t='+Date.now();pa.style.display='block'}else{pa.removeAttribute('src');pa.style.display='none'}
   $('prevMeta').textContent=j.audioUrl?'Prévia de como vai chegar no chat, com o som convertido':'Prévia de como vai chegar no chat';
   toast(j.som?'Figurinha com som pronta!':'Figurinha pronta!');
- }catch(e){toast(e.name==='AbortError'?'Demorou demais, tente um arquivo menor':'Erro: '+e.message)}
- clearInterval(tick);clearTimeout(to);
+ }catch(e){
+  const m=e.name==='AbortError'?'Demorou demais, tente um trecho menor':'Erro: '+e.message;
+  toast(m);$('upMeta').textContent=m;$('upMeta').classList.add('err');
+ }
+ clearInterval(tick);clearInterval(tick2);
  b.disabled=false;b.textContent='Converter';
 };
 $('sendBtn').onclick=async()=>{
